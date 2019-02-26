@@ -29,33 +29,20 @@ xmap <Leader>l <Plug>(Lemonlight)
 
 ### Options
 
-For some color schemes, Lemonlight may not be able to calculate the color for
-dimming down the surrounding paragraphs. In that case, you need to define
-`g:lemonlight_conceal_ctermfg` or `g:lemonlight_conceal_guifg`.
-
 ```vim
-" Color name (:help cterm-colors) or ANSI code
+" Color name (:help cterm-colors) or ANSI code. (default: 'gray')
 let g:lemonlight_conceal_ctermfg = 'gray'
 let g:lemonlight_conceal_ctermfg = 240
 
-" Color name (:help gui-colors) or RGB color
+" Color name (:help gui-colors) or RGB color. (default: 'DarkGray')
 let g:lemonlight_conceal_guifg = 'DarkGray'
 let g:lemonlight_conceal_guifg = '#777777'
 
-" Default: 0.5
-let g:lemonlight_default_coefficient = 0.7
+" The motion to select the auto-focus area. (default: 'ip')
+let g:lemonlight_autofocus_motion = 'ip'
 
-" Number of preceding/following paragraphs to include (default: 0)
-let g:lemonlight_paragraph_span = 1
-
-" Beginning/end of paragraph
-"   When there's no empty line between the paragraphs
-"   and each paragraph starts with indentation
-let g:lemonlight_bop = '^\s'
-let g:lemonlight_eop = '\ze\n^\s'
-
-" Highlighting priority (default: 10)
-"   Set it to -1 not to overrule hlsearch
+" Highlighting priority. (default: 10)
+" Set it to -1 not to overrule hlsearch.
 let g:lemonlight_priority = -1
 ```
 
