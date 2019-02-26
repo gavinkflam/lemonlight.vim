@@ -29,56 +29,28 @@ endif
 
 let g:loaded_lemonlight = 1
 
-function! s:getpos()
-  let bop = get(g:, 'lemonlight_bop', '^\s*$\n\zs')
-  let eop = get(g:, 'lemonlight_eop', '^\s*$')
-  let span = max([0, get(g:, 'lemonlight_paragraph_span', 0) - s:empty(getline('.'))])
-  let pos = getpos('.')
-  for i in range(0, span)
-    let start = searchpos(bop, i == 0 ? 'cbW' : 'bW')[0]
-  endfor
-  call setpos('.', pos)
-  for _ in range(0, span)
-    let end = searchpos(eop, 'W')[0]
-  endfor
-  call setpos('.', pos)
-  return [start, end]
-endfunction
-
 function! s:empty(line)
   return (a:line =~# '^\s*$')
 endfunction
 
-function! s:lemonlight()
-  if !empty(get(w:, 'lemonlight_range', []))
-    return
-  endif
-  if !exists('w:lemonlight_prev')
-    let w:lemonlight_prev = [0, 0, 0, 0]
-  endif
-
-  let curr = [line('.'), line('$')]
-  if curr ==# w:lemonlight_prev[0 : 1]
-    return
-  endif
-
-  let paragraph = s:getpos()
-  if paragraph ==# w:lemonlight_prev[2 : 3]
-    return
-  endif
-
+function! s:lemonlight(range)
+  echo a:range
   call s:clear_hl()
-  call call('s:hl', paragraph)
-  let w:lemonlight_prev = extend(curr, paragraph)
+  call s:hl(a:range)
 endfunction
 
-function! s:hl(startline, endline)
+function! s:hl(range)
   let w:lemonlight_match_ids = get(w:, 'lemonlight_match_ids', [])
   let priority = get(g:, 'lemonlight_priority', 10)
-  call add(w:lemonlight_match_ids, matchadd('LemonlightDim', '\%<'.a:startline.'l', priority))
-  if a:endline > 0
-    call add(w:lemonlight_match_ids, matchadd('LemonlightDim', '\%>'.a:endline.'l', priority))
-  endif
+
+  let bytes =
+    \ (line2byte(a:range[2]) + a:range[3] - 1) -
+    \ (line2byte(a:range[0]) + a:range[1] - 1)
+
+  call add(
+    \ w:lemonlight_match_ids,
+    \ matchaddpos('LemonlightDim', [[a:range[0], a:range[1], bytes]], priority)
+  \ )
 endfunction
 
 function! s:clear_hl()
@@ -112,25 +84,28 @@ function! s:dim()
   endif
 endfunction
 
-function! s:on(range, ...)
+function! s:is_on()
+  return exists('#lemonlight')
+endfunction
+
+function! s:cleanup()
+  if !s:is_on()
+    call s:clear_hl()
+  end
+endfunction
+
+function! lemonlight#on()
   call s:dim()
 
-  let w:lemonlight_range = a:range
-  if !empty(a:range)
-    call s:clear_hl()
-    call call('s:hl', a:range)
-  endif
-
   augroup lemonlight
-    let was_on = exists('#lemonlight#CursorMoved')
     autocmd!
-    if empty(a:range) || was_on
-      autocmd CursorMoved,CursorMovedI * call s:lemonlight()
-    endif
+
+    autocmd CursorMoved,CursorMovedI *
+      \ silent execute "normal \<Plug>(Lemonlight_hl_op)ip"
     autocmd ColorScheme * try
                        \|   call s:dim()
                        \| catch
-                       \|   call s:off()
+                       \|   call lemonlight#off()
                        \|   throw v:exception
                        \| endtry
   augroup END
@@ -144,44 +119,54 @@ function! s:on(range, ...)
   doautocmd CursorMoved
 endfunction
 
-function! s:off()
+function! lemonlight#off()
   call s:clear_hl()
+
   augroup lemonlight
     autocmd!
   augroup END
   augroup! lemonlight
-  unlet! w:lemonlight_prev w:lemonlight_match_ids w:lemonlight_range
+
+  unlet! w:lemonlight_match_ids
 endfunction
 
-function! s:is_on()
-  return exists('#lemonlight')
-endfunction
+function! lemonlight#hl_op(type, ...)
+  " Save selection and register state
+  let sel_save = &selection
+  let &selection = "inclusive"
 
-function! s:cleanup()
-  if !s:is_on()
-    call s:clear_hl()
-  end
-endfunction
-
-function! lemonlight#execute(bang, visual, ...) range
-  let range = a:visual ? [a:firstline, a:lastline] : []
-  if a:bang
-    if a:0 > 0 && a:1 =~ '^!' && !s:is_on()
-      if len(a:1) > 1
-        call s:on(range, a:1[1:-1])
-      else
-        call s:on(range)
-      endif
-    else
-      call s:off()
-    endif
-  elseif a:0 > 0
-    call s:on(range, a:1)
+  if a:0
+    " Invoked from Visual mode, use gv command
+    silent exe "normal! gv"
+  elseif a:type == 'line'
+    silent exe "normal! '[V']"
   else
-    call s:on(range)
+    silent exe "normal! `[v`]"
   endif
+
+  let start = getpos('`<')
+  let end   = getpos('`>')
+
+  silent exe "normal! \<esc>"
+
+  " Highlight range
+  call s:dim()
+  call s:lemonlight([start[1], start[2], end[1], end[2]])
+
+  " Restore saved state
+  let &selection = sel_save
+
+  return 1
 endfunction
 
-function! lemonlight#operator(...)
-  '[,']call lemonlight#execute(0, 1)
+" Dispatch content under the current line
+function! lemonlight#hl_line()
+  call lemonlight#hl()
+  return 1
+endfunction
+
+" Dispatch visual mode selection via operation mode
+function! lemonlight#hl_visual()
+  call lemonlight#hl_op(visualmode())
+  return 1
 endfunction

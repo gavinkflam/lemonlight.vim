@@ -22,7 +22,10 @@
 " OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 " WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-command! -nargs=? -bar -bang -range Lemonlight <line1>,<line2>call lemonlight#execute(<bang>0, <count> > 0, <f-args>)
+command! -nargs=0 LemonlightOn            call lemonlight#on()
+command! -nargs=0 LemonlightOff           call lemonlight#off()
+command! -range   LemonlightHighlight     call lemonlight#hl_visual()
 
-nnoremap <silent> <Plug>(Lemonlight) :set opfunc=lemonlight#operator<CR>g@
-xnoremap <silent> <Plug>(Lemonlight) :Lemonlight<CR>
+nnoremap <silent> <Plug>(Lemonlight_hl_op) :set opfunc=lemonlight#hl_op<CR>g@
+nnoremap <silent> <Plug>(Lemonlight_hl)    :call lemonlight#hl_line()<CR>
+vnoremap <silent> <Plug>(Lemonlight_hl)    :<C-U>call lemonlight#hl_visual()<CR>
