@@ -22,26 +22,12 @@
 " OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 " WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-if exists('g:loaded_lemonlight')
+" Exit when loaded already or compatible mode was set
+if exists('g:loaded_lemonlight') || &cp
   finish
 endif
+
 let g:loaded_lemonlight = 1
-
-let s:cpo_save = &cpo
-set cpo&vim
-
-let s:default_coeff = str2float('0.5')
-let s:invalid_coefficient = 'Invalid coefficient. Expected: 0.0 ~ 1.0'
-
-function! s:unsupported()
-  let var = 'g:lemonlight_conceal_'.(has('gui_running') ? 'gui' : 'cterm').'fg'
-
-  if exists(var)
-    return 'Cannot calculate background color.'
-  else
-    return 'Unsupported color scheme. '.var.' required.'
-  endif
-endfunction
 
 function! s:getpos()
   let bop = get(g:, 'lemonlight_bop', '^\s*$\n\zs')
@@ -101,111 +87,33 @@ function! s:clear_hl()
   endwhile
 endfunction
 
-function! s:hex2rgb(str)
-  let str = substitute(a:str, '^#', '', '')
-  return [eval('0x'.str[0:1]), eval('0x'.str[2:3]), eval('0x'.str[4:5])]
-endfunction
-
-let s:gray_converter = {
-\ 0:   231,
-\ 7:   254,
-\ 15:  256,
-\ 16:  231,
-\ 231: 256
-\ }
-
-function! s:gray_contiguous(col)
-  let val = get(s:gray_converter, a:col, a:col)
-  if val < 231 || val > 256
-    throw s:unsupported()
-  endif
-  return val
-endfunction
-
-function! s:gray_ansi(col)
-  return a:col == 231 ? 0 : (a:col == 256 ? 231 : a:col)
-endfunction
-
-function! s:coeff(coeff)
-  let coeff = a:coeff < 0 ?
-        \ get(g:, 'lemonlight_default_coefficient', s:default_coeff) : a:coeff
-  if coeff < 0 || coeff > 1
-    throw 'Invalid g:lemonlight_default_coefficient. Expected: 0.0 ~ 1.0'
-  endif
-  return coeff
-endfunction
-
-function! s:dim(coeff)
-  let synid = synIDtrans(hlID('Normal'))
-  let fg = synIDattr(synid, 'fg#')
-  let bg = synIDattr(synid, 'bg#')
-
+function! s:dim()
   if has('gui_running') || has('termguicolors') && &termguicolors || has('nvim') && $NVIM_TUI_ENABLE_TRUE_COLOR
-    if a:coeff < 0 && exists('g:lemonlight_conceal_guifg')
-      let dim = g:lemonlight_conceal_guifg
-    elseif empty(fg) || empty(bg)
-      throw s:unsupported()
+    if exists('g:lemonlight_conceal_guifg')
+      let dimColor = g:lemonlight_conceal_guifg
     else
-      let coeff = s:coeff(a:coeff)
-      let fg_rgb = s:hex2rgb(fg)
-      let bg_rgb = s:hex2rgb(bg)
-      let dim_rgb = [
-            \ bg_rgb[0] * coeff + fg_rgb[0] * (1 - coeff),
-            \ bg_rgb[1] * coeff + fg_rgb[1] * (1 - coeff),
-            \ bg_rgb[2] * coeff + fg_rgb[2] * (1 - coeff)]
-      let dim = '#'.join(map(dim_rgb, 'printf("%x", float2nr(v:val))'), '')
+      let dimColor = 'gray'
     endif
-    execute printf('hi LemonlightDim guifg=%s guisp=bg', dim)
+    execute printf('hi LemonlightDim guifg=%s guisp=bg', dimColor)
   elseif &t_Co == 256
-    if a:coeff < 0 && exists('g:lemonlight_conceal_ctermfg')
-      let dim = g:lemonlight_conceal_ctermfg
-    elseif fg <= -1 || bg <= -1
-      throw s:unsupported()
+    if exists('g:lemonlight_conceal_ctermfg')
+      let dimColor = g:lemonlight_conceal_ctermfg
     else
-      let coeff = s:coeff(a:coeff)
-      let fg = s:gray_contiguous(fg)
-      let bg = s:gray_contiguous(bg)
-      let dim = s:gray_ansi(float2nr(bg * coeff + fg * (1 - coeff)))
+      let dimColor = 'DarkGray'
     endif
-    if type(dim) == 1
-      execute printf('hi LemonlightDim ctermfg=%s', dim)
+
+    if type(dimColor) == 1
+      execute printf('hi LemonlightDim ctermfg=%s', dimColor)
     else
-      execute printf('hi LemonlightDim ctermfg=%d', dim)
+      execute printf('hi LemonlightDim ctermfg=%d', dimColor)
     endif
   else
     throw 'Unsupported terminal. Sorry.'
   endif
 endfunction
 
-function! s:error(msg)
-  echohl ErrorMsg
-  echo a:msg
-  echohl None
-endfunction
-
-function! s:parse_coeff(coeff)
-  let t = type(a:coeff)
-  if t == 1
-    if a:coeff =~ '^ *[0-9.]\+ *$'
-      let c = str2float(a:coeff)
-    else
-      throw s:invalid_coefficient
-    endif
-  elseif index([0, 5], t) >= 0
-    let c = t
-  else
-    throw s:invalid_coefficient
-  endif
-  return c
-endfunction
-
 function! s:on(range, ...)
-  try
-    let s:lemonlight_coeff = a:0 > 0 ? s:parse_coeff(a:1) : -1
-    call s:dim(s:lemonlight_coeff)
-  catch
-    return s:error(v:exception)
-  endtry
+  call s:dim()
 
   let w:lemonlight_range = a:range
   if !empty(a:range)
@@ -220,7 +128,7 @@ function! s:on(range, ...)
       autocmd CursorMoved,CursorMovedI * call s:lemonlight()
     endif
     autocmd ColorScheme * try
-                       \|   call s:dim(s:lemonlight_coeff)
+                       \|   call s:dim()
                        \| catch
                        \|   call s:off()
                        \|   throw v:exception
@@ -277,7 +185,3 @@ endfunction
 function! lemonlight#operator(...)
   '[,']call lemonlight#execute(0, 1)
 endfunction
-
-let &cpo = s:cpo_save
-unlet s:cpo_save
-
