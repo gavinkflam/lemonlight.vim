@@ -1,4 +1,5 @@
 " Copyright (c) 2015 Junegunn Choi
+" Copyright (c) 2018 Gavin Lam
 "
 " MIT License
 "
@@ -21,7 +22,7 @@
 " OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 " WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-command! -nargs=? -bar -bang -range Limelight <line1>,<line2>call limelight#execute(<bang>0, <count> > 0, <f-args>)
+command! -nargs=? -bar -bang -range Lemonlight <line1>,<line2>call lemonlight#execute(<bang>0, <count> > 0, <f-args>)
 
-nnoremap <silent> <Plug>(Limelight) :set opfunc=limelight#operator<CR>g@
-xnoremap <silent> <Plug>(Limelight) :Limelight<CR>
+nnoremap <silent> <Plug>(Lemonlight) :set opfunc=lemonlight#operator<CR>g@
+xnoremap <silent> <Plug>(Lemonlight) :Lemonlight<CR>

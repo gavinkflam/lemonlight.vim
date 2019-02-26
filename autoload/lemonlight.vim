@@ -1,4 +1,5 @@
 " Copyright (c) 2015 Junegunn Choi
+" Copyright (c) 2018 Gavin Lam
 "
 " MIT License
 "
@@ -21,10 +22,10 @@
 " OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 " WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-if exists('g:loaded_limelight')
+if exists('g:loaded_lemonlight')
   finish
 endif
-let g:loaded_limelight = 1
+let g:loaded_lemonlight = 1
 
 let s:cpo_save = &cpo
 set cpo&vim
@@ -33,7 +34,7 @@ let s:default_coeff = str2float('0.5')
 let s:invalid_coefficient = 'Invalid coefficient. Expected: 0.0 ~ 1.0'
 
 function! s:unsupported()
-  let var = 'g:limelight_conceal_'.(has('gui_running') ? 'gui' : 'cterm').'fg'
+  let var = 'g:lemonlight_conceal_'.(has('gui_running') ? 'gui' : 'cterm').'fg'
 
   if exists(var)
     return 'Cannot calculate background color.'
@@ -43,9 +44,9 @@ function! s:unsupported()
 endfunction
 
 function! s:getpos()
-  let bop = get(g:, 'limelight_bop', '^\s*$\n\zs')
-  let eop = get(g:, 'limelight_eop', '^\s*$')
-  let span = max([0, get(g:, 'limelight_paragraph_span', 0) - s:empty(getline('.'))])
+  let bop = get(g:, 'lemonlight_bop', '^\s*$\n\zs')
+  let eop = get(g:, 'lemonlight_eop', '^\s*$')
+  let span = max([0, get(g:, 'lemonlight_paragraph_span', 0) - s:empty(getline('.'))])
   let pos = getpos('.')
   for i in range(0, span)
     let start = searchpos(bop, i == 0 ? 'cbW' : 'bW')[0]
@@ -62,41 +63,41 @@ function! s:empty(line)
   return (a:line =~# '^\s*$')
 endfunction
 
-function! s:limelight()
-  if !empty(get(w:, 'limelight_range', []))
+function! s:lemonlight()
+  if !empty(get(w:, 'lemonlight_range', []))
     return
   endif
-  if !exists('w:limelight_prev')
-    let w:limelight_prev = [0, 0, 0, 0]
+  if !exists('w:lemonlight_prev')
+    let w:lemonlight_prev = [0, 0, 0, 0]
   endif
 
   let curr = [line('.'), line('$')]
-  if curr ==# w:limelight_prev[0 : 1]
+  if curr ==# w:lemonlight_prev[0 : 1]
     return
   endif
 
   let paragraph = s:getpos()
-  if paragraph ==# w:limelight_prev[2 : 3]
+  if paragraph ==# w:lemonlight_prev[2 : 3]
     return
   endif
 
   call s:clear_hl()
   call call('s:hl', paragraph)
-  let w:limelight_prev = extend(curr, paragraph)
+  let w:lemonlight_prev = extend(curr, paragraph)
 endfunction
 
 function! s:hl(startline, endline)
-  let w:limelight_match_ids = get(w:, 'limelight_match_ids', [])
-  let priority = get(g:, 'limelight_priority', 10)
-  call add(w:limelight_match_ids, matchadd('LimelightDim', '\%<'.a:startline.'l', priority))
+  let w:lemonlight_match_ids = get(w:, 'lemonlight_match_ids', [])
+  let priority = get(g:, 'lemonlight_priority', 10)
+  call add(w:lemonlight_match_ids, matchadd('LemonlightDim', '\%<'.a:startline.'l', priority))
   if a:endline > 0
-    call add(w:limelight_match_ids, matchadd('LimelightDim', '\%>'.a:endline.'l', priority))
+    call add(w:lemonlight_match_ids, matchadd('LemonlightDim', '\%>'.a:endline.'l', priority))
   endif
 endfunction
 
 function! s:clear_hl()
-  while exists('w:limelight_match_ids') && !empty(w:limelight_match_ids)
-    silent! call matchdelete(remove(w:limelight_match_ids, -1))
+  while exists('w:lemonlight_match_ids') && !empty(w:lemonlight_match_ids)
+    silent! call matchdelete(remove(w:lemonlight_match_ids, -1))
   endwhile
 endfunction
 
@@ -127,9 +128,9 @@ endfunction
 
 function! s:coeff(coeff)
   let coeff = a:coeff < 0 ?
-        \ get(g:, 'limelight_default_coefficient', s:default_coeff) : a:coeff
+        \ get(g:, 'lemonlight_default_coefficient', s:default_coeff) : a:coeff
   if coeff < 0 || coeff > 1
-    throw 'Invalid g:limelight_default_coefficient. Expected: 0.0 ~ 1.0'
+    throw 'Invalid g:lemonlight_default_coefficient. Expected: 0.0 ~ 1.0'
   endif
   return coeff
 endfunction
@@ -140,8 +141,8 @@ function! s:dim(coeff)
   let bg = synIDattr(synid, 'bg#')
 
   if has('gui_running') || has('termguicolors') && &termguicolors || has('nvim') && $NVIM_TUI_ENABLE_TRUE_COLOR
-    if a:coeff < 0 && exists('g:limelight_conceal_guifg')
-      let dim = g:limelight_conceal_guifg
+    if a:coeff < 0 && exists('g:lemonlight_conceal_guifg')
+      let dim = g:lemonlight_conceal_guifg
     elseif empty(fg) || empty(bg)
       throw s:unsupported()
     else
@@ -154,10 +155,10 @@ function! s:dim(coeff)
             \ bg_rgb[2] * coeff + fg_rgb[2] * (1 - coeff)]
       let dim = '#'.join(map(dim_rgb, 'printf("%x", float2nr(v:val))'), '')
     endif
-    execute printf('hi LimelightDim guifg=%s guisp=bg', dim)
+    execute printf('hi LemonlightDim guifg=%s guisp=bg', dim)
   elseif &t_Co == 256
-    if a:coeff < 0 && exists('g:limelight_conceal_ctermfg')
-      let dim = g:limelight_conceal_ctermfg
+    if a:coeff < 0 && exists('g:lemonlight_conceal_ctermfg')
+      let dim = g:lemonlight_conceal_ctermfg
     elseif fg <= -1 || bg <= -1
       throw s:unsupported()
     else
@@ -167,9 +168,9 @@ function! s:dim(coeff)
       let dim = s:gray_ansi(float2nr(bg * coeff + fg * (1 - coeff)))
     endif
     if type(dim) == 1
-      execute printf('hi LimelightDim ctermfg=%s', dim)
+      execute printf('hi LemonlightDim ctermfg=%s', dim)
     else
-      execute printf('hi LimelightDim ctermfg=%d', dim)
+      execute printf('hi LemonlightDim ctermfg=%d', dim)
     endif
   else
     throw 'Unsupported terminal. Sorry.'
@@ -200,34 +201,34 @@ endfunction
 
 function! s:on(range, ...)
   try
-    let s:limelight_coeff = a:0 > 0 ? s:parse_coeff(a:1) : -1
-    call s:dim(s:limelight_coeff)
+    let s:lemonlight_coeff = a:0 > 0 ? s:parse_coeff(a:1) : -1
+    call s:dim(s:lemonlight_coeff)
   catch
     return s:error(v:exception)
   endtry
 
-  let w:limelight_range = a:range
+  let w:lemonlight_range = a:range
   if !empty(a:range)
     call s:clear_hl()
     call call('s:hl', a:range)
   endif
 
-  augroup limelight
-    let was_on = exists('#limelight#CursorMoved')
+  augroup lemonlight
+    let was_on = exists('#lemonlight#CursorMoved')
     autocmd!
     if empty(a:range) || was_on
-      autocmd CursorMoved,CursorMovedI * call s:limelight()
+      autocmd CursorMoved,CursorMovedI * call s:lemonlight()
     endif
     autocmd ColorScheme * try
-                       \|   call s:dim(s:limelight_coeff)
+                       \|   call s:dim(s:lemonlight_coeff)
                        \| catch
                        \|   call s:off()
                        \|   throw v:exception
                        \| endtry
   augroup END
 
-  " FIXME: We cannot safely remove this group once Limelight started
-  augroup limelight_cleanup
+  " FIXME: We cannot safely remove this group once Lemonlight started
+  augroup lemonlight_cleanup
     autocmd!
     autocmd WinEnter * call s:cleanup()
   augroup END
@@ -237,15 +238,15 @@ endfunction
 
 function! s:off()
   call s:clear_hl()
-  augroup limelight
+  augroup lemonlight
     autocmd!
   augroup END
-  augroup! limelight
-  unlet! w:limelight_prev w:limelight_match_ids w:limelight_range
+  augroup! lemonlight
+  unlet! w:lemonlight_prev w:lemonlight_match_ids w:lemonlight_range
 endfunction
 
 function! s:is_on()
-  return exists('#limelight')
+  return exists('#lemonlight')
 endfunction
 
 function! s:cleanup()
@@ -254,7 +255,7 @@ function! s:cleanup()
   end
 endfunction
 
-function! limelight#execute(bang, visual, ...) range
+function! lemonlight#execute(bang, visual, ...) range
   let range = a:visual ? [a:firstline, a:lastline] : []
   if a:bang
     if a:0 > 0 && a:1 =~ '^!' && !s:is_on()
@@ -273,8 +274,8 @@ function! limelight#execute(bang, visual, ...) range
   endif
 endfunction
 
-function! limelight#operator(...)
-  '[,']call limelight#execute(0, 1)
+function! lemonlight#operator(...)
+  '[,']call lemonlight#execute(0, 1)
 endfunction
 
 let &cpo = s:cpo_save

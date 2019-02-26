@@ -1,0 +1,136 @@
+Execute (Setup):
+  Save g:colors_name, &background
+  colo seoul256
+
+  function! s:assert_on()
+    Assert exists('#lemonlight'), 'Lemonlight should be on'
+  endfunction
+  function! s:assert_off()
+    Assert !exists('#lemonlight'), 'Lemonlight should be off'
+  endfunction
+  command! AssertOn  call s:assert_on()
+  command! AssertOff call s:assert_off()
+
+Before:
+  unlet! g:lemonlight_default_coefficient
+       \ g:lemonlight_conceal_guifg g:lemonlight_conceal_ctermfg
+
+Execute (Invalid argument type):
+  Lemonlight 'hello'
+  AssertOff
+
+  Lemonlight {}
+  AssertOff
+
+  Lemonlight []
+  AssertOff
+
+Execute (Invalid argument range):
+  Lemonlight 1.2
+  AssertOff
+
+  Lemonlight 2
+  AssertOff
+
+  Lemonlight -0.2
+  AssertOff
+
+  Lemonlight -1
+  AssertOff
+
+Execute (Lemonlight / Lemonlight!):
+  Lemonlight
+  AssertOn
+
+  Lemonlight
+  AssertOn
+
+  Lemonlight!
+  AssertOff
+
+  Lemonlight!
+  AssertOff
+
+  Lemonlight 0.5
+  AssertOn
+
+  Lemonlight!
+  AssertOff
+
+Execute (Lemonlight!!):
+  Lemonlight!!
+  AssertOn
+
+  Lemonlight!!
+  AssertOff
+
+  Lemonlight!! 2.0
+  AssertOff
+
+  Lemonlight!! 0.9
+  AssertOn
+
+  Lemonlight!! 0.9
+  AssertOff
+
+Execute (g:lemonlight_default_coefficient):
+  let g:lemonlight_default_coefficient = 2.0
+  Lemonlight
+  AssertOff
+
+  let g:lemonlight_default_coefficient = -1.0
+  Lemonlight
+  AssertOff
+
+Execute (Unsupported terminal):
+  colo default
+  let &t_Co = 16
+
+  Lemonlight
+  AssertOff
+
+Execute (Unsupported. but g:lemonlight_conceal_???fg defined):
+  if has('gui_running')
+    colo default
+    let g:lemonlight_conceal_guifg = '#cccccc'
+    Lemonlight
+    AssertOn
+    Lemonlight!
+    AssertOff
+  else
+    colo default
+    let &t_Co = 256
+
+    " Cannot enable it without g:lemonlight_conceal_ctermfg
+    Lemonlight
+    AssertOff
+
+    let g:lemonlight_conceal_ctermfg = 240
+    Lemonlight
+    AssertOn
+    Lemonlight!
+    AssertOff
+
+    let g:lemonlight_conceal_ctermfg = 'red'
+    Lemonlight
+    AssertOn
+    Lemonlight!
+    AssertOff
+  endif
+
+  " However, you're still not allowed to pass argument to Lemonlight command
+  redir => msg
+  Lemonlight 0.5
+  redir END
+  AssertOff
+  Assert msg !~ 'g:lemonlight_conceal_', 'Invalid message: '.msg
+
+Execute (TODO: Color interpolation):
+  Assert 0, 'TODO'
+
+Execute (Cleanup):
+  delc AssertOn
+  delc AssertOff
+  unlet! msg
+  Restore
+  execute 'colo '.g:colors_name
